@@ -6,13 +6,15 @@ import json
 from tzlocal import get_localzone
 import pytz
 import calendar
+from collections import defaultdict
+from zoneinfo import ZoneInfo
 
 
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
-TOKEN = 'bot token'  # Replace with your bot token
+TOKEN = 'bot_token'  # Replace with your bot token
 
-CHANNEL_ID = [ channel ids]  # Replace with your channel ID
+CHANNEL_ID = [ channel_ids]  # Replace with your channel ID
 
 def fetch_upcoming_leetcode_contests():
     url = "https://leetcode.com/graphql/"
@@ -75,9 +77,10 @@ async def sleep_time(contest, dict_of_contests, channel):
     if remaining_seconds > 0:
         if dict_of_contests[contest] ==" we are done with this week's contests ":
             await asyncio.sleep(remaining_seconds)
-            await channel.send("**We are done with the contests of the previous week**")
+            
         else:
             await asyncio.sleep(remaining_seconds)
+            await check_connection()
             await channel.send(f"@everyone\n**Contest in 60min** \n\n{dict_of_contests[contest]}")
     else:
         print(f"Contest '{contest}' has already started or is within 60 minutes.")
@@ -103,17 +106,16 @@ def fetch_upcoming_geeksforgeeks_contests():
     else:
         return []
 async def check_connection():
-    while True:
-        if not client.is_closed():
-            pass
-        else:
-            print("Bot is disconnected, trying to reconnect...   ",datetime.datetime.now())
-            try:
-                await client.connect()
-                print("Bot reconnected.")
-            except Exception as e:
-                print(f"Failed to reconnect: {e}")
-        await asyncio.sleep(60)  # Check connection every 60 seconds
+    if not client.is_closed():
+        pass
+    else:
+        print("Bot is disconnected, trying to reconnect...   ",datetime.datetime.now())
+        try:
+            await client.connect()
+            print("Bot reconnected.")
+        except Exception as e:
+            print(f"Failed to reconnect: {e}")
+    
 
 @client.event
 async def on_ready():
@@ -139,7 +141,7 @@ async def on_ready():
         
         time_difference=time_difference.total_seconds()
         print(time_difference)
-        dict_of_contests = dict()
+        dict_of_contests = defaultdict(str)
         channels = []
         for i in CHANNEL_ID:
             channels.append(client.get_channel(i))
@@ -153,56 +155,65 @@ async def on_ready():
             if leetcode_contests:
                 upcoming_contests_message += "__LeetCode Contests__\n"
                 for contest in leetcode_contests:
-                    start_time = datetime.datetime.fromtimestamp(contest['startTime']).astimezone(pytz.timezone("Asia/Kolkata")).strftime('%Y-%m-%d %H:%M:%S')
+                    start_time = datetime.datetime.fromtimestamp(contest['startTime']).astimezone(ZoneInfo("Asia/Kolkata")).strftime('%Y-%m-%d %H:%M:%S')
                     x = datetime.datetime.fromtimestamp(contest['startTime'])
                     if (x - now).total_seconds() > time_difference:
                         continue
                     contest_info = f"**Name:** {contest['title']}\n**Start Time:** {start_time}\n**Link:** https://leetcode.com/contest/{contest['titleSlug']}\n"
                     upcoming_contests_message += contest_info + "\n"
-                    dict_of_contests[datetime.datetime.fromtimestamp(contest['startTime'])] = contest_info
+                    dict_of_contests[datetime.datetime.fromtimestamp(contest['startTime'])] += contest_info
+
 
             if codeforces_contests:
                 upcoming_contests_message += "__Codeforces Contests__\n"
                 for contest in codeforces_contests:
                     if "Codeforces Round" in contest['name']:
-                        start_time = datetime.datetime.fromtimestamp(contest['startTimeSeconds']).astimezone(pytz.timezone("Asia/Kolkata")).strftime('%Y-%m-%d %H:%M:%S')
+                        start_time = datetime.datetime.fromtimestamp(contest['startTimeSeconds']).astimezone(ZoneInfo("Asia/Kolkata")).strftime('%Y-%m-%d %H:%M:%S')
                         x = datetime.datetime.fromtimestamp(contest['startTimeSeconds'])
                         if (x - now).total_seconds() > time_difference:
                             continue
                         contest_info = f"**Name:** {contest['name']}\n**Start Time:** {start_time}\n**Link:** https://codeforces.com/contest/{contest['id']}\n"
                         upcoming_contests_message += contest_info + "\n"
-                        dict_of_contests[datetime.datetime.fromtimestamp(contest['startTimeSeconds'])] = contest_info
+                        dict_of_contests[datetime.datetime.fromtimestamp(contest['startTimeSeconds'])] += contest_info
+
                     else:
                         continue
 
             if codechef_contests:
                 upcoming_contests_message += "__CodeChef Contests__\n"
                 for contest in codechef_contests:
-                    start_time = datetime.datetime.strptime(contest['contest_start_date'], '%d %b %Y %H:%M:%S').astimezone(pytz.timezone("Asia/Kolkata")).strftime('%Y-%m-%d %H:%M:%S')
-                    x = datetime.datetime.strptime(contest['contest_start_date'], '%d %b %Y %H:%M:%S')
-                    if (x - now).total_seconds() > time_difference:
+                    start_time = datetime.datetime.strptime(contest['contest_start_date'], '%d %b %Y %H:%M:%S').strftime('%Y-%m-%d %H:%M:%S')
+                    x = datetime.datetime.strptime(contest['contest_start_date'], '%d %b %Y %H:%M:%S').astimezone(ZoneInfo("Asia/Kolkata"))
+                    if (x.replace(tzinfo=None) - now).total_seconds() > time_difference:
                         continue
                     contest_info = f"**Name:** {contest['contest_name']}\n**Start Time:** {start_time}\n**Link:** https://www.codechef.com/{contest['contest_code']}\n"
                     upcoming_contests_message += contest_info + "\n"
-                    dict_of_contests[datetime.datetime.strptime(contest['contest_start_date'], '%d %b %Y %H:%M:%S')] = contest_info
+                    dict_of_contests[datetime.datetime.strptime(contest['contest_start_date'], '%d %b %Y %H:%M:%S').astimezone(ZoneInfo("Asia/Kolkata")).replace(tzinfo=None)] += contest_info
+                    
             if geeksforgeeks_contests:
                 upcoming_contests_message += "__GeeksforGeeks Contests__\n"
                 for contest in geeksforgeeks_contests:
                     if "GfG Weekly" in contest.get('name', ''):
                         start_time = datetime.datetime.strptime(contest.get('start_time', ''), '%Y-%m-%dT%H:%M:%S').strftime('%Y-%m-%d %H:%M:%S')
-                        x = datetime.datetime.strptime(contest.get('start_time', ''), '%Y-%m-%dT%H:%M:%S')
-                        if (x - now).total_seconds() > time_difference:
+                        x = pytz.timezone('Asia/Kolkata').localize(datetime.datetime.strptime(contest.get('start_time', ''), '%Y-%m-%dT%H:%M:%S')).astimezone(get_localzone())
+                        if (x - datetime.datetime.now(get_localzone())).total_seconds() > time_difference:
                             continue
+                        
+                        x=x.replace(tzinfo=None)
+                        print(x,datetime.datetime.strptime(contest.get('start_time', ''), '%Y-%m-%dT%H:%M:%S').astimezone(ZoneInfo("Asia/Kolkata")))
                         contest_info = f"**Name:** {contest.get('name', '')}\n**Start Time:** {start_time}\n**Link:** https://practice.geeksforgeeks.org/contest/{contest.get('slug', '')}\n"
                         upcoming_contests_message += contest_info + "\n"
-                        dict_of_contests[datetime.datetime.strptime(contest.get('start_time', ''), '%Y-%m-%dT%H:%M:%S')] = contest_info
-                        new_notification = datetime.datetime.strptime(contest.get('start_time', ''), '%Y-%m-%dT%H:%M:%S')+ datetime.timedelta(hours= 15)
+                        dict_of_contests[x] += contest_info
+                        
+                        new_notification = x+ datetime.timedelta(hours= 15)
                         dict_of_contests[new_notification] = " we are done with this week's contests "
+                        break
 
                     else:
                         continue
             if upcoming_contests_message.strip() == "**Upcoming Coding Contests**":
                 upcoming_contests_message += "No upcoming contests found."
+            
             for channel in channels:
                 await channel.send(upcoming_contests_message)
             for i,j in dict_of_contests.items():
