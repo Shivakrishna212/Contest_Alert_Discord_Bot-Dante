@@ -40,8 +40,4 @@
 
 Once the bot is running, it will automatically post the upcoming coding contest details in the specified Discord channel whenever new contests are available.
 
-## Contributing
 
-Contributions are welcome! Feel free to fork this repository and submit pull requests. For major changes, please open an issue first to discuss what you would like to change.
-
-Special thanks to [Shivakrishna212](https://github.com/Shivakrishna212) for contributing to this project.
