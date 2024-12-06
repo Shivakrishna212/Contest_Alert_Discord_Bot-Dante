@@ -10,11 +10,14 @@ from collections import defaultdict
 from zoneinfo import ZoneInfo
 
 
+
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
-TOKEN = 'bot_token'  # Replace with your bot token
+TOKEN = 'Bot_Token'  # Replace with your bot token
 
 CHANNEL_ID = [ channel_ids ]  # Replace with your channel ID
+
+
 
 def fetch_upcoming_leetcode_contests():
     url = "https://leetcode.com/graphql/"
@@ -125,7 +128,7 @@ async def on_ready():
     while True:
         now=datetime.datetime.now()
         local_time = datetime.datetime.now(get_localzone())
-       
+        print(get_localzone())
 
         # Convert the current local time to IST (India Standard Time)
         india_timezone = pytz.timezone("Asia/Kolkata")
@@ -141,7 +144,7 @@ async def on_ready():
         time_difference = next_monday_10am_ist - current_time_in_india
         
         time_difference=time_difference.total_seconds()
-        
+        print(time_difference)
         dict_of_contests = defaultdict(str)
         channels = []
         for i in CHANNEL_ID:
@@ -151,10 +154,11 @@ async def on_ready():
             codeforces_contests = fetch_upcoming_codeforces_contests()
             codechef_contests = fetch_upcoming_codechef_contests()
             geeksforgeeks_contests = fetch_upcoming_geeksforgeeks_contests()
-            upcoming_contests_message = "@everyone \n**Upcoming Coding Contests This Week**\n\n"
+            upcoming_contests_message =emptymessagechecker = "@everyone \n**Upcoming Coding Contests This Week**\n\n"
 
             if leetcode_contests:
                 upcoming_contests_message += "__LeetCode Contests__\n"
+                emptymessagechecker +="__LeetCode Contests__\n"
                 for contest in leetcode_contests:
                     start_time = datetime.datetime.fromtimestamp(contest['startTime']).astimezone(ZoneInfo("Asia/Kolkata")).strftime('%Y-%m-%d %H:%M:%S')
                     x = datetime.datetime.fromtimestamp(contest['startTime'])
@@ -167,6 +171,7 @@ async def on_ready():
 
             if codeforces_contests:
                 upcoming_contests_message += "__Codeforces Contests__\n"
+                emptymessagechecker +="__Codeforces Contests__\n"
                 for contest in codeforces_contests:
                     if "Codeforces Round" in contest['name']:
                         start_time = datetime.datetime.fromtimestamp(contest['startTimeSeconds']).astimezone(ZoneInfo("Asia/Kolkata")).strftime('%Y-%m-%d %H:%M:%S')
@@ -182,11 +187,12 @@ async def on_ready():
 
             if codechef_contests:
                 upcoming_contests_message += "__CodeChef Contests__\n"
+                emptymessagechecker +="__CodeChef Contests__\n"
                 for contest in codechef_contests:
                     start_time = datetime.datetime.fromisoformat(contest["contest_start_date_iso"]).astimezone(ZoneInfo("Asia/Kolkata")).replace(tzinfo=None).strftime('%Y-%m-%d %H:%M:%S')
                     
                     x = datetime.datetime.fromisoformat(contest['contest_start_date_iso']).astimezone(get_localzone())
-                    
+                    print(datetime.datetime.fromisoformat(contest["contest_start_date_iso"]),start_time,x,x.replace(tzinfo=None))
                     if (x.replace(tzinfo=None) - now).total_seconds() > time_difference:
                         continue
                     contest_info = f"**Name:** {contest['contest_name']}\n**Start Time:** {start_time}\n**Link:** https://www.codechef.com/{contest['contest_code']}\n"
@@ -195,6 +201,7 @@ async def on_ready():
                     
             if geeksforgeeks_contests:
                 upcoming_contests_message += "__GeeksforGeeks Contests__\n"
+                emptymessagechecker += "__GeeksforGeeks Contests__\n"
                 for contest in geeksforgeeks_contests:
                     if "GfG Weekly" in contest.get('name', ''):
                         start_time = datetime.datetime.strptime(contest.get('start_time', ''), '%Y-%m-%dT%H:%M:%S').strftime('%Y-%m-%d %H:%M:%S')
@@ -207,19 +214,19 @@ async def on_ready():
                         contest_info = f"**Name:** {contest.get('name', '')}\n**Start Time:** {start_time}\n**Link:** https://practice.geeksforgeeks.org/contest/{contest.get('slug', '')}\n"
                         upcoming_contests_message += contest_info + "\n"
                         dict_of_contests[x] = contest_info
-                        
-                        new_notification = x+ datetime.timedelta(hours= 15)
-                        dict_of_contests[new_notification] = " we are done with this week's contests "
                         break
-
                     else:
                         continue
-            if upcoming_contests_message.strip() == "**Upcoming Coding Contests**":
-                upcoming_contests_message += "No upcoming contests found."
-            if datetime.datetime.now(pytz.timezone("Asia/Kolkata")).weekday() == 0:
+            new_notification = datetime.datetime.now()+ datetime.timedelta(hours = 1, seconds = time_difference)
+            dict_of_contests[new_notification] = " we are done with this week's contests "
+            if upcoming_contests_message == emptymessagechecker :
+                await asyncio.sleep(time_difference+100)
+                continue
+            newmessagetimechecker=datetime.datetime.now(pytz.timezone("Asia/Kolkata"))
+            if newmessagetimechecker.weekday() == 0 :
                 for channel in channels:
                     await channel.send(upcoming_contests_message)
-            
+            print(upcoming_contests_message)
             for i,j in dict_of_contests.items():
                 print(i,j)
             list_of_timings = [i for i in dict_of_contests.keys()]
